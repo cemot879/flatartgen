@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <title>FlatArtGen – Generator Gambar 2D</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; margin-top: 50px; background: #f3f4f6; }
+    input, button { padding: 12px; font-size: 16px; border-radius: 6px; margin: 5px; }
+    button { background-color: #3b82f6; color: white; border: none; cursor: pointer; }
+    button:hover { background-color: #2563eb; }
+    img { margin-top: 20px; border-radius: 10px; max-width: 90%; }
+  </style>
+  <script defer>
+    async function generateImage() {
+      const prompt = document.getElementById("prompt").value;
+      const result = document.getElementById("result");
+      result.innerHTML = "⏳ Menghasilkan gambar...";
+
+      const res = await fetch("/api/huggingface", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt })
+      });
+
+      const data = await res.json();
+      if (data.image) {
+        result.innerHTML = `<img src="data:image/png;base64,${data.image}" />`;
+      } else {
+        result.innerHTML = "❌ Gagal generate gambar.";
+      }
+    }
+  </script>
+</head>
+<body>
+  <h1>🎨 FlatArtGen – Generator Gambar 2D</h1>
+  <input id="prompt" type="text" placeholder="Contoh: kucing minimalis warna pastel"/>
+  <br><br>
+  <button onclick="generateImage()">Generate Gambar</button>
+  <div id="result" style="margin-top: 20px;"></div>
+</body>
+</html>
