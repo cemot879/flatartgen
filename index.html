@@ -2,99 +2,78 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>FlatArtGen – Generator Gambar 2D</title>
   <style>
-    body {
-      font-family: sans-serif;
-      text-align: center;
-      margin-top: 50px;
-      background: #f3f4f6;
-    }
-    input {
-      width: 320px;
-      padding: 12px;
-      font-size: 16px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-    }
-    button {
-      padding: 12px 24px;
-      background-color: #3b82f6;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 16px;
-    }
-    button:hover {
-      background-color: #2563eb;
-    }
-    img {
-      margin-top: 24px;
-      border-radius: 10px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    }
+    body { font-family: sans-serif; text-align: center; margin-top: 50px; background: #f3f4f6; }
+    input { width: 320px; padding: 12px; font-size: 16px; border: 1px solid #ccc; border-radius: 6px; }
+    button { padding: 12px 24px; background-color: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; }
+    button:hover { background-color: #2563eb; }
+    img { margin-top: 24px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
   </style>
-  <script defer>
-    async function generateImage() {
-      const prompt = document.getElementById("prompt").value;
+</head>
+<body>
+  <h1>🎨 FlatArtGen – Generator Gambar 2D</h1>
+  <input id="prompt" type="text" placeholder="Deskripsi gambar, contoh: kota minimalis warna pastel" />
+  <br /><br />
+  <button onclick="startGeneration()">Generate Gambar</button>
+  <div id="result" style="margin-top: 30px;"></div>
+
+  <script>
+    let pollInterval;
+
+    async function startGeneration() {
+      const prompt = document.getElementById("prompt").value.trim();
       const resultDiv = document.getElementById("result");
+      if (!prompt) {
+        alert("Masukkan prompt dulu ya!");
+        return;
+      }
       resultDiv.innerHTML = "⏳ Memproses gambar...";
 
-      const response = await fetch("https://stablehorde.net/api/v2/generate/async", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "apikey": "c5OMyJIimZ2WlhPIK9bVQQ"
-        },
-        body: JSON.stringify({
-          prompt: prompt,
-          params: {
-            n: 1,
-            width: 512,
-            height: 512,
-            sampler_name: "k_euler",
-            cfg_scale: 7,
-            steps: 20
-          },
-          nsfw: false
-        }),
-      });
-
-      const data = await response.json();
-      if (data.id) {
-        pollImage(data.id);
-      } else {
-        resultDiv.innerHTML = "❌ Gagal generate.";
+      try {
+        const response = await fetch("/api/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt }),
+        });
+        const data = await response.json();
+        if (data.jobId) {
+          pollStatus(data.jobId);
+        } else {
+          resultDiv.innerHTML = "❌ Gagal memulai generate.";
+        }
+      } catch (err) {
+        resultDiv.innerHTML = "❌ Error: " + err.message;
       }
     }
 
-    async function pollImage(id) {
+    function pollStatus(jobId) {
       const resultDiv = document.getElementById("result");
       let tries = 0;
-
-      const poll = setInterval(async () => {
-        const res = await fetch(`https://stablehorde.net/api/v2/generate/status/${id}`);
-        const json = await res.json();
-
-        if (json.done) {
-          clearInterval(poll);
-          const imageBase64 = json.generations[0].img;
-          resultDiv.innerHTML = `<img src="data:image/png;base64,${imageBase64}" width="300"/>`;
-        } else if (tries++ > 30) {
-          clearInterval(poll);
-          resultDiv.innerHTML = "⛔ Timeout.";
+      pollInterval = setInterval(async () => {
+        tries++;
+        if (tries > 30) { // timeout 60 detik
+          clearInterval(pollInterval);
+          resultDiv.innerHTML = "⛔ Timeout generate gambar.";
+          return;
+        }
+        try {
+          const res = await fetch(`/api/status?jobId=${jobId}`);
+          const json = await res.json();
+          if (json.done && json.generations && json.generations.length > 0) {
+            clearInterval(pollInterval);
+            const base64 = json.generations[0].img;
+            resultDiv.innerHTML = `<img src="data:image/png;base64,${base64}" width="300" />`;
+          } else {
+            resultDiv.innerHTML = `⏳ Memproses... (${tries * 2}s)`;
+          }
+        } catch (err) {
+          clearInterval(pollInterval);
+          resultDiv.innerHTML = "❌ Error saat cek status: " + err.message;
         }
       }, 2000);
     }
   </script>
-</head>
-<body>
-  <h1 style="font-size: 24px;">🎨 FlatArtGen – Generator Gambar 2D</h1>
-  <input id="prompt" type="text" placeholder="Deskripsi gambar, contoh: kota minimalis warna pastel" />
-  <br><br>
-  <button onclick="generateImage()">Generate Gambar</button>
-  <div id="result" style="margin-top: 30px;"></div>
 </body>
 </html>
