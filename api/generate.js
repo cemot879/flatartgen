@@ -17,7 +17,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         prompt,
-        params: { width: 512, height: 512, steps: 20, sampler_name: "k_euler", cfg_scale: 7 },
+        params: { width: 384, height: 384, steps: 10, sampler_name: "k_euler", cfg_scale: 7 },
         nsfw: false,
       }),
     });
