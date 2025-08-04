@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FlatArtGen</title>
+</head>
+<body>
+  <h1>🎨 FlatArtGen</h1>
+  <input type="text" id="prompt" placeholder="Deskripsi gambar" />
+  <button onclick="generate()">Generate</button>
+  <div id="result"></div>
+
+  <script>
+    async function generate() {
+      const prompt = document.getElementById("prompt").value;
+      const resDiv = document.getElementById("result");
+      resDiv.innerHTML = "⏳ Memproses...";
+
+      const res = await fetch("/api/huggingface", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt })
+      });
+
+      const data = await res.json();
+      if (data.image) {
+        resDiv.innerHTML = `<img src="data:image/png;base64,${data.image}" width="512" />`;
+      } else {
+        resDiv.innerHTML = `❌ Error: ${data.error}`;
+      }
+    }
+  </script>
+</body>
+</html>
