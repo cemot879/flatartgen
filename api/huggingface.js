@@ -23,26 +23,23 @@ export default async function handler(req, res) {
     );
 
     if (!response.ok) {
-      const err = await response.json();
-      return res.status(response.status).json({ error: err.error || "Unknown error" });
+      const errorResponse = await response.json();
+      return res.status(response.status).json({ error: errorResponse.error || "Unknown error" });
     }
 
-    const json = await response.json();
+    const result = await response.json();
 
-    // json biasanya berisi array gambar base64 (bisa berbeda tergantung model)
-    // Contoh: json = [{ generated_image: "base64string" }]
-    // Atau json bisa langsung base64 string
+    // Output bisa bermacam-macam tergantung model
+    let base64Image = null;
 
-    let base64Image;
+    if (Array.isArray(result)) {
+      base64Image = result[0]?.image || result[0]?.generated_image;
+    } else if (typeof result === "string") {
+      base64Image = result;
+    }
 
-    if (Array.isArray(json) && json[0]?.generated_image) {
-      base64Image = json[0].generated_image;
-    } else if (typeof json === "string") {
-      base64Image = json;
-    } else if (json.generated_image) {
-      base64Image = json.generated_image;
-    } else {
-      return res.status(500).json({ error: "Format response tidak dikenali" });
+    if (!base64Image) {
+      return res.status(500).json({ error: "No image returned from model." });
     }
 
     res.status(200).json({ image: base64Image });
