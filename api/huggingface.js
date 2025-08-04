@@ -1,12 +1,9 @@
-// File: /api/huggingface.js
-
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const HF_TOKEN = process.env.HF_TOKEN; // 🔐 Ambil token dari Vercel Environment
-
+  const HF_TOKEN = process.env.HF_TOKEN;
   const { prompt } = req.body;
 
   try {
@@ -20,15 +17,33 @@ export default async function handler(req, res) {
         },
         body: JSON.stringify({
           inputs: prompt,
-          options: {
-            wait_for_model: true,
-          },
+          options: { wait_for_model: true }
         }),
       }
     );
 
-    const buffer = await response.arrayBuffer();
-    const base64Image = Buffer.from(buffer).toString("base64");
+    if (!response.ok) {
+      const err = await response.json();
+      return res.status(response.status).json({ error: err.error || "Unknown error" });
+    }
+
+    const json = await response.json();
+
+    // json biasanya berisi array gambar base64 (bisa berbeda tergantung model)
+    // Contoh: json = [{ generated_image: "base64string" }]
+    // Atau json bisa langsung base64 string
+
+    let base64Image;
+
+    if (Array.isArray(json) && json[0]?.generated_image) {
+      base64Image = json[0].generated_image;
+    } else if (typeof json === "string") {
+      base64Image = json;
+    } else if (json.generated_image) {
+      base64Image = json.generated_image;
+    } else {
+      return res.status(500).json({ error: "Format response tidak dikenali" });
+    }
 
     res.status(200).json({ image: base64Image });
 
